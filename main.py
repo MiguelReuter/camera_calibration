@@ -160,6 +160,33 @@ def draw_lines(pts_a, pts_b, l_a, l_b):
 	cv2.waitKey(0)
 
 
+def points_to_homogeneous_coordinates(pts):
+	pts_h = np.zeros((pts.shape[0], pts.shape[1] + 1))
+	pts_h[:, :pts.shape[1]] = pts
+	pts_h[:, pts.shape[1]] = [1] * pts.shape[0]
+	
+	return pts_h
+
+
+def normalize_points(pts):
+	n = pts.shape[0]
+	
+	pts_h = np.zeros((pts.shape[0], pts.shape[1] + 1))
+	pts_h[:, :pts.shape[1]] = pts
+	pts_h[:, pts.shape[1]] = [1] * n
+
+	cu = pts[:, 0].mean()
+	cv = pts[:, 1].mean()
+
+	dc = np.matrix([[cu, cv]] * n)
+	s = 1 / np.absolute(pts - dc).max();
+
+	T = np.matrix([[s, 0, -s*cu], [0, s, -s*cv], [0, 0, 1]])
+	norm_pts = pts_h * T.T
+
+	return norm_pts, T
+
+
 
 if __name__ == "__main__":
 	# M_norm_A	
@@ -172,7 +199,9 @@ if __name__ == "__main__":
 	print("residual error : ", r)	
 	
 	
-	# M_B
+
+
+	# M_Bs
 	#pts_2d = load_points("input/pts2d-pic_b.txt")
 	#pts_3d = load_points("input/pts3d.txt")
 	
@@ -184,11 +213,32 @@ if __name__ == "__main__":
 	# fundamental matrix
 	pts_2d_a = load_points("input/pts2d-pic_a.txt")
 	pts_2d_b = load_points("input/pts2d-pic_b.txt")
+
+
+	# 
+	pts_a_h = points_to_homogeneous_coordinates(pts_2d_a)
+	pts_b_h = points_to_homogeneous_coordinates(pts_2d_b)
+
+
 	F = compute_fundamental_matrix(pts_2d_a, pts_2d_b)
+	print("err = ", np.linalg.norm(pts_b_h * F * pts_a_h.T))
 
-	[lines_a, lines_b] = compute_epipolar_lines(pts_2d_a, pts_2d_b, F)
+	pts_norm_a, Ta = normalize_points(pts_2d_a)
+	pts_norm_b, Tb = normalize_points(pts_2d_b)
 
-	draw_lines(pts_2d_a, pts_2d_b, lines_a, lines_b)
+	F0 = compute_fundamental_matrix(pts_norm_a, pts_norm_b)
+	#print("err = ", np.linalg.norm(pts_norm_b * F0 * pts_norm_a.T))
+	
+	F0 = Tb.T * F0 * Ta
+	print(F)
+	print(F0)
+	print("err = ", np.linalg.norm(pts_b_h * F0 * pts_a_h.T))
+
+	#[lines_a, lines_b] = compute_epipolar_lines(pts_2d_a, pts_2d_b, F)
+	#draw_lines(pts_2d_a, pts_2d_b, lines_a, lines_b)
+	
+	#[lines_a, lines_b] = compute_epipolar_lines(pts_2d_a, pts_2d_b, F0)
+	#draw_lines(pts_2d_a, pts_2d_b, lines_a, lines_b)
 
 
 
